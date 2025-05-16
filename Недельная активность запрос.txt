@@ -1,0 +1,34 @@
+SELECT this_week,
+       status,
+       toInt64(-uniq(user_id)) AS count_users
+  FROM       
+(SELECT user_id,
+       addWeeks(arrayJoin(weeks_visited), 1) AS this_week,
+       arrayJoin(weeks_visited) AS previous_week,
+       'gone' AS status,
+       weeks_visited
+  FROM       
+(SELECT user_id,
+       groupUniqArray(toMonday(toDate(time))) AS weeks_visited
+  FROM simulator_20250220.feed_actions
+ GROUP BY user_id) 
+ WHERE has(weeks_visited, this_week) = 0 AND this_week <= today())
+ GROUP BY this_week, status
+ 
+UNION ALL
+
+SELECT this_week,
+       status,
+       toInt64(uniq(user_id)) AS count_users
+  FROM       
+(SELECT user_id,
+       arrayJoin(weeks_visited) AS this_week,
+       addWeeks(arrayJoin(weeks_visited), -1) AS previous_week,
+       if(has(weeks_visited, addWeeks(arrayJoin(weeks_visited), -1)) = 0, 'new', 'retained') AS status,
+       weeks_visited
+  FROM       
+(SELECT user_id,
+       groupUniqArray(toMonday(toDate(time))) AS weeks_visited
+  FROM simulator_20250220.feed_actions
+ GROUP BY user_id))
+ GROUP BY this_week, status
